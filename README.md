@@ -45,6 +45,12 @@ This enables secure remote access to your server.
 
     sudo apt install openssh-server -y
 
+**Install Runtime Libraries**
+
+Required by the Vintage Story server engine on Linux.
+
+    sudo apt install -y libsqlite3-0 libsdl2-2.0-0
+
 **Install UFW (Uncomplicated Firewall)**
 
     sudo apt install ufw -y
@@ -115,9 +121,15 @@ Check https://vintagestory.at/downloads for the current version number and repla
 
 # Step 6: Configure the Server
 
-Vintage Story uses a JSON file for configuration. On first launch it will be auto-generated, but you can create or edit it manually:
+Vintage Story generates `serverconfig.json` automatically on first launch. Run the server briefly to create the file, then stop it:
 
     cd /home/your_username/vintagestory
+    ./start_server.sh --dataPath data
+
+Once you see the server has started in the terminal, press `Ctrl+C` to stop it. The `data/` folder and config file will now exist.
+
+Edit the config file:
+
     nano data/serverconfig.json
 
 Key settings to update in the JSON:
@@ -268,6 +280,14 @@ Reload systemctl & restart sshd:
 
 These are some steps you can take to enhance the security of your SSH service.
 
+**Install Fail2Ban (Recommended)**
+
+Fail2Ban automatically bans IPs after repeated failed SSH login attempts — a set-and-forget layer of protection for any public-facing server.
+
+    sudo apt install fail2ban -y
+    sudo systemctl enable fail2ban
+    sudo systemctl start fail2ban
+
 # Change Who Can Use the Switch User (su) Command
 
 Make a new group for the su command. Replace *group_name* with your desired name:
@@ -326,15 +346,15 @@ Paste the following code:
         echo "$(date +'%Y-%m-%d %H:%M:%S') Sending save and shutdown commands to Screen..." | tee -a "$LOGFILE"
         
         # Notify players in-game
-        screen -S "$SCREEN_NAME" -p 0 -X stuff "/announce Server maintenance starting in 15 seconds. Saving world...\015"
+        su - your_username -c "screen -S $SCREEN_NAME -p 0 -X stuff \"/announce Server maintenance starting in 15 seconds. Saving world...\015\""
         sleep 15
         
         # Force a world save
-        screen -S "$SCREEN_NAME" -p 0 -X stuff "/autosavenow\015"
+        su - your_username -c "screen -S $SCREEN_NAME -p 0 -X stuff \"/server.autosavenow\015\""
         sleep 5
         
         # Graceful shutdown command
-        screen -S "$SCREEN_NAME" -p 0 -X stuff "/stop\015"
+        su - your_username -c "screen -S $SCREEN_NAME -p 0 -X stuff \"/stop\015\""
     else
         echo "$(date +'%Y-%m-%d %H:%M:%S') Screen session not found. Stopping service directly." | tee -a "$LOGFILE"
     fi
@@ -370,6 +390,7 @@ Paste the following code:
     # 4. REBOOT
     send_discord_message "🔄 **Maintenance Complete:** Rebooting server. Vintage Story will auto-restart."
     echo "$(date +'%Y-%m-%d %H:%M:%S') Maintenance finished. Rebooting." | tee -a "$LOGFILE"
+    sleep 2
     reboot
 
 Make the script executable:
@@ -383,3 +404,24 @@ Schedule it with cron (Optional). Edit the root crontab:
 Add a line to run maintenance nightly at 4:00 AM:
 
     0 4 * * * /usr/local/bin/vintagestory-maintenance.sh
+
+**Monitor the Maintenance Log**
+
+If the server doesn't come back up after a scheduled window, check the log to diagnose what happened:
+
+    tail -f /var/log/vintagestory_maintenance.log
+
+> [!TIP]
+> To prevent the log from growing indefinitely, add a logrotate config:
+>
+>     sudo nano /etc/logrotate.d/vintagestory
+>
+> Paste the following:
+>
+>     /var/log/vintagestory_maintenance.log {
+>         weekly
+>         rotate 4
+>         compress
+>         missingok
+>         notifempty
+>     }
