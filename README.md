@@ -25,12 +25,15 @@ This is a step-by-step guide on how to set up and run a Ubuntu Vintage Story ded
 
 Vintage Story requires the .NET runtime to run on Linux.
 
-    sudo apt install -y wget apt-transport-https
-    wget https://packages.microsoft.com/config/ubuntu/$(lsb_release -rs)/packages-microsoft-prod.deb -O packages-microsoft-prod.deb
-    sudo dpkg -i packages-microsoft-prod.deb
-    rm packages-microsoft-prod.deb
-    sudo apt update
-    sudo apt install -y dotnet-runtime-7.0
+    sudo apt install -y dotnet-runtime-8.0
+
+> [!NOTE]
+> On Ubuntu 20.04, .NET may not be available in the default repos. If the above fails, add Microsoft's package feed first:
+>
+>     wget https://packages.microsoft.com/config/ubuntu/20.04/packages-microsoft-prod.deb -O /tmp/ms-prod.deb
+>     sudo dpkg -i /tmp/ms-prod.deb
+>     sudo apt update
+>     sudo apt install -y dotnet-runtime-8.0
 
 **Install Screen (Session Manager)**
 
@@ -45,12 +48,6 @@ This enables secure remote access to your server.
 **Install UFW (Uncomplicated Firewall)**
 
     sudo apt install ufw -y
-
-**Install unzip**
-
-Used to extract the Vintage Story server archive.
-
-    sudo apt install unzip -y
 
 ---
 
@@ -149,7 +146,7 @@ To keep the server running after you close your terminal, use Screen:
 
     screen -S vintagestory
     cd /home/your_username/vintagestory
-    dotnet VintagestoryServer.dll --dataPath data
+    ./start_server.sh --dataPath data
 
 Detach from the screen session without stopping the server:
 
@@ -196,7 +193,7 @@ Copy and edit the following script:
     {
         # Start the Vintage Story server in a detached screen session
         log "Starting Vintage Story server..."
-        if /usr/bin/screen -dmS VintageStoryServer dotnet "$DIRPATH/VintagestoryServer.dll" --dataPath "$DATAPATH"; then
+        if /usr/bin/screen -dmS VintageStoryServer "$DIRPATH/start_server.sh" --dataPath "$DATAPATH"; then
             log "Vintage Story server started in screen session 'VintageStoryServer'."
         else
             log "Failed to start Vintage Story server."
